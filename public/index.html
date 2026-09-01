@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seguimiento Colectivos Rosario</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body, html { margin: 0; padding: 0; height: 100%; width: 100%; }
+    #map { height: 100vh; width: 100vw; }
+    .info-box {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-family: Arial, sans-serif;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+    .info-box h3 { margin: 0 0 4px 0; font-size: 16px; color: #111; }
+    .info-box p { margin: 0; font-size: 12px; color: #555; }
+  </style>
+</head>
+<body>
+
+  <div class="info-box">
+    <h3>🚌 Rosario Colectivos</h3>
+    <p>Seguimiento en tiempo real</p>
+  </div>
+
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    // Centro de la ciudad de Rosario
+    const map = L.map('map').setView([-32.9468, -60.6393], 13);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    const marcadores = {};
+
+    socket.on('ubicaciones-iniciales', (colectivos) => {
+      colectivos.forEach(actualizarPosicion);
+    });
+
+    socket.on('posicion-actualizada', (colectivo) => {
+      actualizarPosicion(colectivo);
+    });
+
+    function actualizarPosicion(colectivo) {
+      const { idColectivo, linea, lat, lng } = colectivo;
+
+      if (marcadores[idColectivo]) {
+        marcadores[idColectivo].setLatLng([lat, lng]);
+      } else {
+        marcadores[idColectivo] = L.marker([lat, lng])
+          .addTo(map)
+          .bindPopup(`<b>Línea: ${linea}</b><br>ID: ${idColectivo}`);
+      }
+    }
+  </script>
+</body>
+</html>
