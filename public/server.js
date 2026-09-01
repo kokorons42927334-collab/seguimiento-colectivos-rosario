@@ -19,14 +19,17 @@ const colectivosEnVivo = {};
 io.on('connection', (socket) => {
   console.log('📱 Dispositivo conectado:', socket.id);
 
+  // Enviar las posiciones guardadas al usuario que se acaba de conectar
   socket.emit('ubicaciones-iniciales', Object.values(colectivosEnVivo));
 
-  // Recibir ubicación enviada desde el celular/chofer
+  // Recibir la posición en tiempo real desde chofer.html
   socket.on('actualizar-posicion', (data) => {
     colectivosEnVivo[data.idColectivo] = {
       ...data,
       ultimaActualizacion: new Date().toISOString()
     };
+
+    // Retransmitir la posición a todos los mapas abiertos en tiempo real
     io.emit('posicion-actualizada', colectivosEnVivo[data.idColectivo]);
   });
 
@@ -34,25 +37,6 @@ io.on('connection', (socket) => {
     console.log('🔴 Dispositivo desconectado:', socket.id);
   });
 });
-
-// Simulación de prueba en Rosario para ver el mapa en funcionamiento
-let latPrueba = -32.9468;
-let lngPrueba = -60.6393;
-
-setInterval(() => {
-  latPrueba += (Math.random() - 0.49) * 0.001;
-  lngPrueba += (Math.random() - 0.49) * 0.001;
-
-  const datosSimulados = {
-    idColectivo: 'COL-115-01',
-    linea: 'K / 115',
-    lat: latPrueba,
-    lng: lngPrueba
-  };
-
-  colectivosEnVivo[datosSimulados.idColectivo] = datosSimulados;
-  io.emit('posicion-actualizada', datosSimulados);
-}, 3000);
 
 server.listen(PORT, () => {
   console.log(`🚀 Servidor listo en puerto ${PORT}`);
