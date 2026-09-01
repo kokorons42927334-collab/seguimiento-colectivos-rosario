@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel del Chofer - Transmisión GPS</title>
+  <style>
+    * { box-sizing: border-box; font-family: Arial, sans-serif; }
+    body { margin: 0; padding: 20px; background-color: #f4f4f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+    .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+    h2 { margin-top: 0; color: #333; }
+    .input-group { margin-bottom: 15px; text-align: left; }
+    label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
+    input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; }
+    button { width: 100%; padding: 14px; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.3s; margin-top: 10px; }
+    .btn-start { background-color: #28a745; color: white; }
+    .btn-stop { background-color: #dc3545; color: white; display: none; }
+    .status { margin-top: 15px; padding: 10px; border-radius: 6px; font-size: 14px; font-weight: bold; display: none; }
+    .status-active { background-color: #d4edda; color: #155724; }
+    .coordinates { margin-top: 10px; font-size: 12px; color: #666; font-family: monospace; }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h2>🚌 Panel del Chofer</h2>
+    
+    <div class="input-group">
+      <label for="linea">Línea de Colectivo:</label>
+      <input type="text" id="linea" placeholder="Ej: 115 / K / 122" value="K / 115">
+    </div>
+
+    <div class="input-group">
+      <label for="idColectivo">ID o Unidad:</label>
+      <input type="text" id="idColectivo" placeholder="Ej: COL-101" value="COL-115-01">
+    </div>
+
+    <button id="btnIniciar" class="btn-start" onclick="iniciarTransmision()">Iniciar Transmisión GPS</button>
+    <button id="btnDetener" class="btn-stop" onclick="detenerTransmision()">Detener Transmisión</button>
+
+    <div id="status" class="status"></div>
+    <div id="coords" class="coordinates"></div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    let watchId = null;
+
+    const btnIniciar = document.getElementById('btnIniciar');
+    const btnDetener = document.getElementById('btnDetener');
+    const statusDiv = document.getElementById('status');
+    const coordsDiv = document.getElementById('coords');
+
+    function iniciarTransmision() {
+      const linea = document.getElementById('linea').value.trim();
+      const idColectivo = document.getElementById('idColectivo').value.trim();
+
+      if (!linea || !idColectivo) {
+        alert('Por favor, ingresá la línea y el ID de la unidad.');
+        return;
+      }
+
+      if (!("geolocation" in navigator)) {
+        alert("Tu celular o navegador no soporta geolocalización por GPS.");
+        return;
+      }
+
+      // Iniciar el rastreo de ubicación continuo por GPS
+      watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+
+          // Emitir coordenadas reales mediante WebSockets al servidor
+          socket.emit('actualizar-posicion', {
+            idColectivo: idColectivo,
+            linea: linea,
+            lat: lat,
+            lng: lng
+          });
+
+          // Actualizar la vista del chofer
+          statusDiv.style.display = 'block';
+          statusDiv.className = 'status status-active';
+          statusDiv.innerText = '📡 Transmitiendo en tiempo real...';
+
+          coordsDiv.innerText = `Lat: ${lat.toFixed(6)} | Lng: ${lng.toFixed(6)}`;
+          
+          btnIniciar.style.display = 'none';
+          btnDetener.style.display = 'block';
+        },
+        (error) => {
+          console.error("Error obteniendo GPS:", error);
+          alert("Error al obtener la ubicación. Asegurate de otorgar los permisos de GPS al navegador.");
+        },
+        {
+          enableHighAccuracy: true, // Solicita la máxima precisión de GPS del chip del celular
+          maximumAge: 0,
+          timeout: 10000
+        }
+      );
+    }
+
+    function detenerTransmision() {
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+      }
+
+      statusDiv.style.display = 'none';
+      coordsDiv.innerText = '';
+      btnIniciar.style.display = 'block';
+      btnDetener.style.display = 'none';
+    }
+  </script>
+</body>
+</html>
