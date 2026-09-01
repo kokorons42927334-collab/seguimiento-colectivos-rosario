@@ -6,21 +6,40 @@
   <title>Seguimiento Colectivos Rosario</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
-    body, html { margin: 0; padding: 0; height: 100%; width: 100%; }
+    body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: Arial, sans-serif; }
     #map { height: 100vh; width: 100vw; }
+    
     .info-box {
       position: absolute;
       top: 10px;
       left: 10px;
       z-index: 1000;
       background: rgba(255, 255, 255, 0.95);
-      padding: 12px 16px;
+      padding: 10px 14px;
       border-radius: 8px;
-      font-family: Arial, sans-serif;
       box-shadow: 0 2px 6px rgba(0,0,0,0.3);
     }
-    .info-box h3 { margin: 0 0 4px 0; font-size: 16px; color: #111; }
-    .info-box p { margin: 0; font-size: 12px; color: #555; }
+    .info-box h3 { margin: 0 0 2px 0; font-size: 15px; color: #111; }
+    .info-box p { margin: 0; font-size: 11px; color: #555; }
+
+    /* ESTILO PERSONALIZADO DEL ÍCONO DE COLECTIVO */
+    .bus-marker {
+      background: #007bff;
+      color: white;
+      border: 2px solid white;
+      border-radius: 20px;
+      padding: 4px 8px;
+      font-size: 12px;
+      font-weight: bold;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+    .bus-marker span {
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
@@ -37,7 +56,7 @@
   <script>
     const socket = io();
 
-    // Centro de la ciudad de Rosario
+    // Centro de Rosario
     const map = L.map('map').setView([-32.9468, -60.6393], 13);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -46,6 +65,16 @@
     }).addTo(map);
 
     const marcadores = {};
+
+    // Función para crear un ícono personalizado con la línea del colectivo
+    function crearIconoColectivo(linea) {
+      return L.divIcon({
+        className: 'custom-bus-icon',
+        html: `<div class="bus-marker"><span>🚌</span> ${linea}</div>`,
+        iconSize: [60, 30],
+        iconAnchor: [30, 15]
+      });
+    }
 
     socket.on('ubicaciones-iniciales', (colectivos) => {
       colectivos.forEach(actualizarPosicion);
@@ -59,11 +88,15 @@
       const { idColectivo, linea, lat, lng } = colectivo;
 
       if (marcadores[idColectivo]) {
+        // Mover el marcador existente
         marcadores[idColectivo].setLatLng([lat, lng]);
       } else {
-        marcadores[idColectivo] = L.marker([lat, lng])
-          .addTo(map)
-          .bindPopup(`<b>Línea: ${linea}</b><br>ID: ${idColectivo}`);
+        // Crear el nuevo marcador con el ícono visual personalizado
+        marcadores[idColectivo] = L.marker([lat, lng], {
+          icon: crearIconoColectivo(linea)
+        })
+        .addTo(map)
+        .bindPopup(`<b>Línea: ${linea}</b><br>Unidad: ${idColectivo}`);
       }
     }
   </script>
